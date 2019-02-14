@@ -1,0 +1,70 @@
+<!--
+author: Ander Chouza
+desc: html para representar graficamente mediante Google Charts datos almacenados en dos canales en ThingSpeak
+-->
+
+<html>
+  <head>
+    <title>LineCharts</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      <!-- Se definen las dos variables, una para cada canal y se definen las funciones mediante las que se obtendran los datos de cada canal -->
+      var jsonDataset1;
+      var jsonDataset2;
+      function myCallback1(dataWeGotViaJsonp) {
+        jsonDataset1 = dataWeGotViaJsonp['feeds'];
+      };
+      function myCallback2(dataWeGotViaJsonp) {
+        jsonDataset2 = dataWeGotViaJsonp['feeds'];
+      };
+    </script>
+    
+    <!-- Se llaman las funciones myCallback1 y myCallback2 despues de incorporar el Channel ID y Read API Key de cada uno de los canales -->
+    <script type="text/javascript" src="https://api.thingspeak.com/channels/700675/feeds.json?api_key=06JRN81WDRWPNI1U&callback=myCallback1"></script>
+    <script type="text/javascript" src="https://api.thingspeak.com/channels/700676/feeds.json?api_key=WH02UUHZXPEDEKKI&callback=myCallback2"></script>
+    
+    <script type="text/javascript">
+      <!-- Se cargan los paquetes necesarios de Google Charts -->
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(drawChart);
+      
+      function drawChart() {
+        <!-- Se crea la variable data y se le añaden columnas para las diferentes variables -->
+        var data = new google.visualization.DataTable();
+        data.addColumn('datetime', 'Time');
+        data.addColumn('number', 'Temperatura');
+        data.addColumn('number', 'Presion');
+        <!-- Como se tiene la información en dos canales, con un dato cada 20 s en cada canal, hay que juntar la informacion de lso dos canales -->
+        for(var i=0; i<(jsonDataset1.length+jsonDataset2.length); i++){
+          <!-- Si i es par, se cogen los datos del Dataset1, del canal 1 -->
+          if (i%2==0) {
+            var timestamp=jsonDataset1[i/2]['created_at'];
+            var temp=jsonDataset1[i/2]['field1'];
+            var pres=jsonDataset1[i/2]['field2'];
+          } else {
+          <!-- Si i es impar, se cogen los datos del Dataset2, del canal 2 -->
+            var timestamp=jsonDataset2[(i-1)/2]['created_at'];
+            var temp=jsonDataset2[(i-1)/2]['field1'];
+            var pres=jsonDataset2[(i-1)/2]['field2'];
+          }
+          data.addRow([new Date(timestamp), parseFloat(temp), parseFloat(pres)]);
+        };
+        
+        var options = {
+          title: 'Datos estacion meteorologica',
+          legend: {position: 'bottom'},
+          curveType: 'function',
+          colors: ['red','blue'],
+          series: {0: {targetAxisIndex: 0}, 1: {targetAxisIndex: 1}},
+          vAxes: {0: {title: 'Temperatura (ºC)'}, 1: {title: 'Presion (hPa)'}}
+        };
+        
+        var chart=new google.visualization.LineChart(document.getElementById('curve_chart'));
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+  <body>
+    <div id="curve_chart"></div>
+  </body>
+</html>
